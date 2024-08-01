@@ -44,13 +44,23 @@ func handleConnection(conn net.Conn) {
 
 		receivedData.WriteString(string(buffer[:n]))
 		if strings.Contains(receivedData.String(), "\r\n") {
-			_, err = conn.Write([]byte("+PONG\r\n"))
-			if err != nil {
-				fmt.Println("Error writing to connection:", err)
-				return
+			command := strings.TrimSpace(receivedData.String())
+			fmt.Printf("Command: '%s'\n", command)
+
+			if command == "PING" {
+				_, err = conn.Write([]byte("+PONG\r\n"))
+				if err != nil {
+					fmt.Println("Error writing to connection:", err)
+					return
+				}
 			}
-			fmt.Println("Command:\n", receivedData.String())
+			if command == "QUIT" {
+				fmt.Println("Quitting connection.")
+				conn.Close()
+			}
+
 			receivedData.Reset()
+
 		}
 	}
 }
