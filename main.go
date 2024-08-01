@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"strings"
 )
 
 func main() {
@@ -23,23 +24,33 @@ func main() {
 		}
 		fmt.Println("Accepted connection from:", conn.RemoteAddr())
 
-		go func(conn net.Conn) {
-			defer conn.Close()
+		go handleConnection(conn)
 
-			buffer := make([]byte, 1024)
-			_, err = conn.Read(buffer)
-			if err != nil {
-				fmt.Println("Error reading from connection:", err)
-				return
-			}
+	}
+}
 
-			//fmt.Printf("Command:\n%s", buffer)
+func handleConnection(conn net.Conn) {
+	var receivedData strings.Builder
+	defer conn.Close()
 
+	buffer := make([]byte, 1024)
+	for {
+
+		n, err := conn.Read(buffer)
+		if err != nil {
+			fmt.Println("Error reading from connection:", err)
+			return
+		}
+
+		receivedData.WriteString(string(buffer[:n]))
+		if strings.Contains(receivedData.String(), "\r\n") {
 			_, err = conn.Write([]byte("+PONG\r\n"))
 			if err != nil {
 				fmt.Println("Error writing to connection:", err)
 				return
 			}
-		}(conn)
+			fmt.Println("Command:\n", receivedData.String())
+			receivedData.Reset()
+		}
 	}
 }
