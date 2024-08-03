@@ -45,8 +45,13 @@ func handleConnection(conn net.Conn) {
 
 		receivedData.WriteString(string(buffer[:n]))
 		if strings.Contains(receivedData.String(), "\r\n") {
-			command := strings.ToUpper(strings.TrimSpace(receivedData.String()))
+			args := argsParser(receivedData)
+			command := strings.ToUpper(args[0])
+
 			fmt.Printf("Command: '%s'\n", command)
+
+			fmt.Println("Args:", args)
+			fmt.Println("len(Args):", len(args))
 
 			if command == "PING" {
 				_, err = conn.Write([]byte("+PONG\r\n"))
@@ -64,4 +69,15 @@ func handleConnection(conn net.Conn) {
 
 		}
 	}
+}
+
+func argsParser(receivedData strings.Builder) []string {
+	args := strings.Split(receivedData.String(), " ")
+
+	for i, arg := range args {
+		args[i] = strings.TrimSpace(arg)
+	}
+
+	return args
+
 }
