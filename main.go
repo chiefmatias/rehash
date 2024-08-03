@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"os"
 	"strings"
 )
 
@@ -44,7 +45,7 @@ func handleConnection(conn net.Conn) {
 
 		receivedData.WriteString(string(buffer[:n]))
 		if strings.Contains(receivedData.String(), "\r\n") {
-			command := strings.TrimSpace(receivedData.String())
+			command := strings.ToUpper(strings.TrimSpace(receivedData.String()))
 			fmt.Printf("Command: '%s'\n", command)
 
 			if command == "PING" {
@@ -56,7 +57,7 @@ func handleConnection(conn net.Conn) {
 			}
 			if command == "QUIT" {
 				fmt.Println("Quitting connection.")
-				conn.Close()
+				os.Exit(1)
 			}
 
 			receivedData.Reset()
