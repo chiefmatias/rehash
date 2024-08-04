@@ -1,9 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
-	"os"
+	"strconv"
 	"strings"
 )
 
@@ -31,53 +32,28 @@ func main() {
 }
 
 func handleConnection(conn net.Conn) {
-	var receivedData strings.Builder
 	defer conn.Close()
-
-	buffer := make([]byte, 1024)
-	for {
-
-		n, err := conn.Read(buffer)
-		if err != nil {
-			fmt.Println("Error reading from connection:", err)
-			return
-		}
-
-		receivedData.WriteString(string(buffer[:n]))
-		if strings.Contains(receivedData.String(), "\r\n") {
-			args := argsParser(receivedData)
-			command := strings.ToUpper(args[0])
-
-			fmt.Printf("Command: '%s'\n", command)
-
-			fmt.Println("Args:", args)
-			fmt.Println("len(Args):", len(args))
-
-			if command == "PING" {
-				_, err = conn.Write([]byte("+PONG\r\n"))
-				if err != nil {
-					fmt.Println("Error writing to connection:", err)
-					return
-				}
-			}
-			if command == "QUIT" {
-				fmt.Println("Quitting connection.")
-				os.Exit(1)
-			}
-
-			receivedData.Reset()
-
-		}
-	}
+	reader := bufio.NewReader(conn)
+	respParser(reader)
 }
 
-func argsParser(receivedData strings.Builder) []string {
-	args := strings.Split(receivedData.String(), " ")
+func respParser(reader *bufio.Reader) {
+	char, _ := reader.ReadByte()
 
-	for i, arg := range args {
-		args[i] = strings.TrimSpace(arg)
+	if char != '$' {
+		fmt.Println("This is not a bulk string!")
 	}
 
-	return args
+	sizeBytes, _ := reader.ReadBytes('\n')
+	size, _ := strconv.Atoi(strings.TrimSpace(string(sizeBytes)))
 
+	fmt.Println("size is:", size)
+
+	data := make([]byte, size)
+	_, err := reader.Read(data)
+	if err != nil {
+		fmt.Println("Something happened with the reader.", err)
+	}
+
+	fmt.Println("Data is:", string(data))
 }
