@@ -22,42 +22,49 @@ const (
 	Array        = byte('*')
 )
 
-func respParser(reader *bufio.Reader) (RespMessage, error) {
-	var err error
+type reader func(i *bufio.Reader) (RespMessage, error)
 
-	msg := RespMessage{}
-	msg.typ, err = reader.ReadByte()
+var readers = [256]reader{}
+
+func init() {
+	readers[BlobString] = handleBlobString
+	readers[SimpleString] = handleSimpleString
+	readers[Integer] = handleInteger
+	readers[Array] = handleArray
+}
+
+func handleBlobString(reader *bufio.Reader) (msg RespMessage, err error) {
+	msg.typ = BlobString
+	msg.integer, err = readInteger(reader)
 	if err != nil {
 		return msg, err
 	}
+	msg.str, err = readBulk(reader, msg.integer)
+	return msg, err
+}
 
-	switch msg.typ {
-	case Integer:
-		msg.integer, err = readInteger(reader)
-
-	case SimpleString:
-		msg.str, err = readSimple(reader)
-
-	case BlobString:
-		msg.integer, err = readInteger(reader)
-		if err != nil {
-			return msg, err
-		}
-		msg.str, err = readBulk(reader, msg.integer)
-
-	case Array:
-		msg.integer, err = readInteger(reader)
-		if err != nil {
-			return msg, err
-		}
-		msg.values = make([]RespMessage, 0, msg.integer)
-		_, err = readArray(reader, &msg)
-
-	}
+func handleArray(reader *bufio.Reader) (msg RespMessage, err error) {
+	msg.typ = Array
+	msg.integer, err = readInteger(reader)
 	if err != nil {
-		fmt.Println(err)
+		return msg, err
 	}
-	fmt.Println("Parsed message:", msg)
+	msg.values = make([]RespMessage, 0, msg.integer)
+	_, err = readArray(reader, &msg)
+
+	return msg, err
+}
+func handleSimpleString(reader *bufio.Reader) (msg RespMessage, err error) {
+	msg.typ = SimpleString
+	msg.str, err = readSimple(reader)
+
+	return msg, err
+}
+
+func handleInteger(reader *bufio.Reader) (msg RespMessage, err error) {
+	msg.typ = Integer
+	msg.integer, err = readInteger(reader)
+
 	return msg, err
 }
 
@@ -108,4 +115,19 @@ func readArray(reader *bufio.Reader, msg *RespMessage) (*RespMessage, error) {
 		msg.values = append(msg.values, item)
 	}
 	return msg, nil
+}
+
+func respParser(reader *bufio.Reader) (RespMessage, error) {
+	typ, err := reader.ReadByte()
+
+	if err != nil {
+		return RespMessage{}, err
+	}
+
+	handler := readers[typ]
+	if handler == nil {
+		return RespMessage{}, fmt.Errorf("unsupported message type: %c", typ)
+	}
+
+	return handler(reader)
 }

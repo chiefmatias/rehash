@@ -35,9 +35,9 @@ func handleConnection(conn net.Conn) {
 
 	msg, err := respParser(reader)
 	if err != nil {
-		fmt.Println("An awful error just occurred!", err)
+		fmt.Println(err)
 		return
 	}
-	fmt.Println("Final RESP Object:", msg)
+	fmt.Println("Parsed message:", msg)
 
 }
