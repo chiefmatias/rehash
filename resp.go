@@ -25,10 +25,10 @@ const (
 func respParser(reader *bufio.Reader) (RespMessage, error) {
 	var err error
 
-	msg := &RespMessage{}
+	msg := RespMessage{}
 	msg.typ, err = reader.ReadByte()
 	if err != nil {
-		return *msg, err
+		return msg, err
 	}
 
 	switch msg.typ {
@@ -41,24 +41,24 @@ func respParser(reader *bufio.Reader) (RespMessage, error) {
 	case BlobString:
 		msg.integer, err = readInteger(reader)
 		if err != nil {
-			return *msg, err
+			return msg, err
 		}
 		msg.str, err = readBulk(reader, msg.integer)
 
 	case Array:
 		msg.integer, err = readInteger(reader)
 		if err != nil {
-			return *msg, err
+			return msg, err
 		}
 		msg.values = make([]RespMessage, 0, msg.integer)
-		_, err = readArray(reader, msg)
+		_, err = readArray(reader, &msg)
 
 	}
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println("Parsed message:", msg)
-	return *msg, err
+	return msg, err
 }
 
 func readInteger(reader *bufio.Reader) (int, error) {
