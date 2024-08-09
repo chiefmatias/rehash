@@ -31,13 +31,20 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
+
 	reader := bufio.NewReader(conn)
 
-	msg, err := respParser(reader)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Println("Parsed message:", msg)
+	for {
 
+		msg, err := respParser(reader)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println("Parsed message:", msg)
+
+		answer, _ := respSerializer(RespMessage{typ: SimpleString, str: "OK"})
+		conn.Write(answer)
+
+	}
 }
