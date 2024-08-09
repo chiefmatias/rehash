@@ -1,3 +1,5 @@
 # Ignore binary files
 bin/
 
+python/
+python/test.py

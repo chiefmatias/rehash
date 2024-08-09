@@ -23,15 +23,25 @@ const (
 )
 
 type reader func(i *bufio.Reader) (RespMessage, error)
+type writer func(msg RespMessage) []byte
 
 var readers = [256]reader{}
+var writers = [256]writer{}
 
 func init() {
 	readers[BlobString] = handleBlobString
 	readers[SimpleString] = handleSimpleString
 	readers[Integer] = handleInteger
 	readers[Array] = handleArray
+
+	writers[BlobString] = writeBlobString
+	writers[SimpleString] = writeSimpleString
+	writers[SimpleErr] = writeSimpleErr
+	writers[Integer] = writeInteger
+	writers[Array] = writeArray
 }
+
+//----------------------------Parser Functions------------------------------------
 
 func handleBlobString(reader *bufio.Reader) (msg RespMessage, err error) {
 	msg.typ = BlobString
@@ -130,4 +140,66 @@ func respParser(reader *bufio.Reader) (RespMessage, error) {
 	}
 
 	return handler(reader)
+}
+
+// ----------------------------Serializer Functions------------------------------------
+func respSerializer(msg RespMessage) ([]byte, error) {
+	typ := msg.typ
+
+	handler := writers[typ]
+	if handler == nil {
+		return nil, fmt.Errorf("unsupported message type: %c", typ)
+	}
+
+	return handler(msg), nil
+}
+
+func writeBlobString(msg RespMessage) (bytes []byte) {
+	bytes = append(bytes, BlobString)
+	bytes = append(bytes, []byte(strconv.Itoa(msg.integer))...)
+	bytes = append(bytes, '\r', '\n')
+	bytes = append(bytes, []byte(msg.str)...)
+	bytes = append(bytes, '\r', '\n')
+	return bytes
+}
+
+func writeSimpleString(msg RespMessage) (bytes []byte) {
+	bytes = append(bytes, SimpleString)
+	bytes = append(bytes, []byte(msg.str)...)
+	bytes = append(bytes, '\r', '\n')
+	return bytes
+}
+
+func writeSimpleErr(msg RespMessage) (bytes []byte) {
+	bytes = append(bytes, SimpleErr)
+	bytes = append(bytes, []byte(msg.str)...)
+	bytes = append(bytes, '\r', '\n')
+	return bytes
+}
+
+func writeInteger(msg RespMessage) (bytes []byte) {
+	bytes = append(bytes, Integer)
+	bytes = append(bytes, []byte(strconv.Itoa(msg.integer))...)
+	bytes = append(bytes, '\r', '\n')
+	return bytes
+}
+
+func writeArray(msg RespMessage) (bytes []byte) {
+	bytes = append(bytes, Array)
+	bytes = append(bytes, []byte(strconv.Itoa(msg.integer))...)
+	bytes = append(bytes, '\r', '\n')
+
+	for i := 0; i < msg.integer; i++ {
+		item, err := respSerializer(msg.values[i])
+		if err != nil {
+			// Not sure if this situation would ever happen,
+			// I will leave it here for later testing.
+			fmt.Printf("unsupported message type: %c\n", msg.values[i].typ)
+			return nil
+		}
+		bytes = append(bytes, []byte(item)...)
+
+	}
+
+	return bytes
 }
