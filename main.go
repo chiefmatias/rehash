@@ -43,7 +43,16 @@ func handleConnection(conn net.Conn) {
 		}
 		fmt.Println("Parsed message:", msg)
 
-		answer, _ := respSerializer(RespMessage{typ: SimpleString, str: "OK"})
+		answerMsg, err := commandHandler(msg)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		answer, err := respSerializer(answerMsg)
+		if err != nil {
+			fmt.Println(err)
+		}
+
 		conn.Write(answer)
 
 	}
