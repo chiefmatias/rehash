@@ -15,7 +15,7 @@ type RespMessage struct {
 }
 
 const (
-	BlobString   = byte('$')
+	BulkString   = byte('$')
 	SimpleString = byte('+')
 	SimpleErr    = byte('-')
 	Integer      = byte(':')
@@ -29,12 +29,12 @@ var readers = [256]reader{}
 var writers = [256]writer{}
 
 func init() {
-	readers[BlobString] = handleBlobString
+	readers[BulkString] = handleBulkString
 	readers[SimpleString] = handleSimpleString
 	readers[Integer] = handleInteger
 	readers[Array] = handleArray
 
-	writers[BlobString] = writeBlobString
+	writers[BulkString] = writeBulkString
 	writers[SimpleString] = writeSimpleString
 	writers[SimpleErr] = writeSimpleErr
 	writers[Integer] = writeInteger
@@ -43,8 +43,8 @@ func init() {
 
 //----------------------------Parser Functions------------------------------------
 
-func handleBlobString(reader *bufio.Reader) (msg RespMessage, err error) {
-	msg.typ = BlobString
+func handleBulkString(reader *bufio.Reader) (msg RespMessage, err error) {
+	msg.typ = BulkString
 	msg.integer, err = readInteger(reader)
 	if err != nil {
 		return msg, err
@@ -154,8 +154,8 @@ func respSerializer(msg RespMessage) ([]byte, error) {
 	return handler(msg), nil
 }
 
-func writeBlobString(msg RespMessage) (bytes []byte) {
-	bytes = append(bytes, BlobString)
+func writeBulkString(msg RespMessage) (bytes []byte) {
+	bytes = append(bytes, BulkString)
 	bytes = append(bytes, []byte(strconv.Itoa(msg.integer))...)
 	bytes = append(bytes, '\r', '\n')
 	bytes = append(bytes, []byte(msg.str)...)
